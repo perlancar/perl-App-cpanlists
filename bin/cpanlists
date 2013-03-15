@@ -154,7 +154,7 @@ my $cmd = Perinci::CmdLine->new(
         'like'              => {url=>"$api_url/like_list"},
         'unlike'            => {url=>"$api_url/unlike_list"},
 
-        'comment'           => {url=>"$api_url/comment_list"},
+        'add_comment'       => {url=>"$api_url/add_list_comment"},
         'delete_comment'    => {url=>"$api_url/delete_list_comment"},
     },
     pa_args => {
