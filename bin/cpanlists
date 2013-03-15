@@ -157,7 +157,7 @@ my $cmd = Perinci::CmdLine->new(
         'comment'           => {url=>"$api_url/comment_list"},
         'delete_comment'    => {url=>"$api_url/delete_list_comment"},
     },
-    pa_options => {
+    pa_args => {
         handler_args => {
             user     => $conf ? $conf->{username} : undef,
             password => $conf ? $conf->{password} : undef,
