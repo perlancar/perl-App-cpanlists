@@ -17,9 +17,7 @@ our %SPEC;
 my $pah = Perinci::Access::HTTP::Client->new;
 
 my $conf_path = "$ENV{HOME}/.cpanlists.conf.json";
-my $conf;
-
-$ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+my $api_url   = $ENV{API_URL} // "https://cpanlists.org/api";
 
 sub __read_conf {
     require File::Slurp;
@@ -28,15 +26,15 @@ sub __read_conf {
     my $json = JSON->new->allow_nonref;
     if (-f $conf_path) {
         $log->debugf("Reading configuration file %s ...", $conf_path);
-        $conf = $json->decode(~~File::Slurp::read_file($conf_path));
+        return $json->decode(~~File::Slurp::read_file($conf_path));
+    } else {
+        return undef;
     }
 }
 
 sub __conf {
-    __read_conf() unless $conf;
-    die "Configuration file $conf_path not found, please 'register' ".
-        "or 'login-via-bitcard' or write configuration file manually first\n"
-            unless $conf;
+    state $conf = __read_conf() unless $conf;
+    $conf //= {};
     $conf;
 }
 
@@ -49,97 +47,51 @@ sub __write_conf {
     my $json = JSON->new->allow_nonref;
     return if $cond && (-f $conf_path);
     $log->warnf("Writing configuration file %s ...", $conf_path);
-    File::Slurp::write_file($conf_path, $json->encode($conf));
+    File::Slurp::write_file($conf_path, __conf);
 }
 
-$SPEC{register} = {
+$SPEC{signin} = {
     v => 1.1,
-    summary => 'Register an account at cpanlists.org',
+    summary => 'Signin',
     description => <<'_',
 
-After an account is successfully created, will write to `~/.cpanlists.json.conf`
-something like:
+Required for some actions like creating a list, commenting, deleting stuffs,
+etc.
 
-    {"user":"USER", "pass":"PASS"}
+Currently the only (and default) signin service available is `bitcard`, which is
+also used by some other Perl-related services like CPANRatings.
 
-If you have an existing account, you can instead of
+To signin via BitCard, specify your bitcard username and password. This command
+will submit a login form at bitcard.org for you.
+
 _
     args => {
-        username => {
-            schema => 'str*',
-            req => 1,
-            pos => 0,
+        service => {
+            schema => ['str*', default => 'bitcard'],
         },
-        email => {
-            schema => 'str*',
+        username => {
+            schema => ['str*'],
+            pos => 0,
             req => 1,
-            pos => 1,
         },
         password => {
-            schema => 'str*',
-            pos => 2,
-            description => <<'_',
-
-If not specified, a random one will be generated.
-
-_
+            schema => ['str*'],
+            pos => 1,
+            req => 1,
         },
     },
 };
-sub register {
+sub signin {
     my %args = @_;
-    my $password = $args{password};
-    my $pass_gen;
 
-    if (!defined($password)) {
-        $password = int(rand()*900000 + 100000);
-        $pass_gen++;
-    }
-
-    my $res = $pah->request(
-        call => "https://cpanlists.org/api/App/cpanlists/Server/create_user",
-        {args => {username => $args{username}, email => $args{email},
-                  password => $password}},
-    );
-    return $res unless $res->[0] == 200;
-
-    __write_conf({username=>$args{username}, password=>$password}, 1);
-    if ($pass_gen) {
-        [200, "OK", "Password is $password"];
-    } else {
-        [200, "OK"];
-    }
 }
-
-$SPEC{login_via_bitcard} = {
-    v => 1.1,
-    summary => 'Login via Bitcard',
-    description => <<'_',
-_
-    args => {
-        # email
-        # username
-        # bitcard password
-    },
-};
-sub login_via_bitcard {
-    [502, "Sorry, not yet implemented. Not really apt without a browser interface. Please use 'register' instead."];
-}
-
-# ---
-
-my $url     = $ENV{API_URL} // "https://cpanlists.org/api";
-my $api_url = "$url/App/cpanlists/Server";
-
-__read_conf();
 
 my $cmd = Perinci::CmdLine->new(
     #url => "$url/",
-    summary => 'Command-line client to cpanlists.org',
+    summary => 'Command-line client for cpanlists.org',
     subcommands => {
         # public actions
-        'register'          => {url=>'/main/register'},
-        'login_via_bitcard' => {url=>'/main/login_via_bitcard'},
+        'signin'    => {url=>'/main/login_via_bitcard'},
 
         'lists'             => {url=>"$api_url/list_lists"},
         'get'               => {url=>"$api_url/get_list"},
@@ -167,17 +119,16 @@ my $cmd = Perinci::CmdLine->new(
 $cmd->run;
 
 1;
-# ABSTRACT: Create personal lists of CPAN modules/authors
+# ABSTRACT: Command-line client for cpanlists.org
 # PODNAME: cpanlists
 
 =head1 SYNOPSIS
 
- ### register an account first (TODO: login via PAUSE/github/etc). you can leave
- ### out --password and a random one will be generated.
+First, signin via BitCard (required for most actions except viewing):
 
- % cpanlists register --username fido --email fido@example.com --password pass123
+ % cpanlists signin stevenharyanto pass123
 
- ### search for existing lists
+To browse lists:
 
  % cpanlists lists
  .----+-------------------------------------+--------.
@@ -188,52 +139,51 @@ $cmd->run;
  | 1  | CPAN modules to get a module's path | neilb  |
  '----+-------------------------------------+--------'
 
- % cpanlists 'favorite'
- .----+-------------------------------------+--------.
- | ID | Title                               | User   |
- +----+-------------------------------------+--------+
- | 1  | My favorite CPAN modules            | steven |
- | 2  | My favorites                        | neilb  |
- '----+-------------------------------------+--------'
-
+ % cpanlists lists 'favorite';  # display all lists containing some keyword
  % cpanlists lists 'Mojo::DOM'; # display all lists containing some module
+ % cpanlists lists --like;      # list modules which you have liked
 
- % cpanlists lists --like; # list modules which you have liked
-
- ### display a list's contents
+To display a list's contents:
 
  % cpanlists get 1
 
- ### create a list
+To create a new list (of modules) (note that description is in Markdown):
 
- % cpanlists create "Fido's favorite modules in 2013"
+ % cpanlists create "My favorite modules in 2013" --description "These are the modules I _use_ the most this year"
  List ID is: 23
 
- ### add item to a list
+To add items to a list:
 
- % cpanlists add-item 23 WWW::Mechanize "Indispensable for automating web stuffs"
- % cpanlists add-item 23 Mojo::DOM "Another indispensable tool for scraping"
+ % cpanlists add-item 23 WWW::Mechanize "Indispensable for _automating_ web stuffs"
+ % cpanlists add-item 23 Mojo::DOM "Another indispensable tool for web-scraping" 5; # give a 5-star rating
  % cpanlists add-item 23 Foo::Bar ; # no comment
 
- ### delete item from your list
+To create a list and add items to it in one go:
+
+ % cpanlists create "My favorite modules in 2013" \
+   --item "WWW::Mechanize|Indispensable for _automating_ web stuffs" \
+   --item "Mojo::DOM|Another indispensable tool for web-scraping|5" \
+   --item Foo::Bar
+
+To delete items from your list:
 
  % cpanlists delete-item 23 Foo::Bar
 
- ### list your lists
+To list your lists (those created by you):
 
  % cpanlists my-lists
 
- ### like a list
+To like (and unlike) a list:
 
  % cpanlists like 2
  % cpanlists unlike 2
 
- ### comment on (and optionally like) a list
+To comment (and optionally like) a list:
 
  % cpanlists comment 1 "Thanks for including my module Qux::Quux as your favorite"
  % cpanlists comment 3 "You forgot Module::Path::Super" --like
 
- ### delete your list
+To delete your list:
 
  % cpanlists delete 23
 
@@ -242,11 +192,11 @@ $cmd->run;
 
 Command-line interface to http://cpanlists.org
 
-Currently only supports lists of modules.
-
 
 =head1 SEE ALSO
 
-http://blogs.perl.org/users/neilb/2013/03/the-cpan-unknown-usage-problem.html
+L<http://cpanlists.org>
+
+L<http://blogs.perl.org/users/neilb/2013/03/the-cpan-unknown-usage-problem.html>
 
 =cut
