@@ -20,13 +20,13 @@ my $conf_path = "$ENV{HOME}/.cpanlists.conf.json";
 my $api_url   = $ENV{API_URL} // "https://cpanlists.org/api";
 
 sub __read_conf {
-    require File::Slurp;
+    require File::Slurp::Tiny;
     require JSON;
 
     my $json = JSON->new->allow_nonref;
     if (-f $conf_path) {
         $log->debugf("Reading configuration file %s ...", $conf_path);
-        return $json->decode(~~File::Slurp::read_file($conf_path));
+        return $json->decode(~~File::Slurp::Tiny::read_file($conf_path));
     } else {
         return undef;
     }
@@ -39,7 +39,7 @@ sub __conf {
 }
 
 sub __write_conf {
-    require File::Slurp;
+    require File::Slurp::Tiny;
     require JSON;
 
     my ($conf, $cond) = @_;
@@ -47,7 +47,7 @@ sub __write_conf {
     my $json = JSON->new->allow_nonref;
     return if $cond && (-f $conf_path);
     $log->warnf("Writing configuration file %s ...", $conf_path);
-    File::Slurp::write_file($conf_path, __conf);
+    File::Slurp::Tiny::write_file($conf_path, __conf);
 }
 
 $SPEC{signin} = {
