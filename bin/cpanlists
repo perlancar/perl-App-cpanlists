@@ -109,7 +109,7 @@ my $cmd = Perinci::CmdLine->new(
         'add_comment'       => {url=>"$api_url/add_list_comment"},
         'delete_comment'    => {url=>"$api_url/delete_list_comment"},
     },
-    pa_args => {
+    riap_client_args => {
         handler_args => {
             user     => $conf ? $conf->{username} : undef,
             password => $conf ? $conf->{password} : undef,
