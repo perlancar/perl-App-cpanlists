@@ -126,7 +126,7 @@ $cmd->run;
 
 First, signin via BitCard (required for most actions except viewing):
 
- % cpanlists signin stevenharyanto pass123
+ % cpanlists signin arthurcdoyle pass123
 
 To browse lists:
 
@@ -134,7 +134,7 @@ To browse lists:
  .----+-------------------------------------+--------.
  | ID | Title                               | User   |
  +----+-------------------------------------+--------+
- | 1  | My favorite CPAN modules            | steven |
+ | 1  | My favorite CPAN modules            | arthur |
  | 2  | My favorites                        | neilb  |
  | 1  | CPAN modules to get a module's path | neilb  |
  '----+-------------------------------------+--------'
