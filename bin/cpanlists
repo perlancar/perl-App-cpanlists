@@ -1,5 +1,8 @@
 #!perl
 
+# DATE
+# VERSION
+
 use 5.010001;
 use strict;
 use warnings;
@@ -8,8 +11,6 @@ use Log::Any '$log';
 use Perinci::CmdLine;
 #use Perinci::Access;
 use Perinci::Access::HTTP::Client;
-
-# VERSION
 
 our %SPEC;
 
@@ -119,7 +120,7 @@ my $cmd = Perinci::CmdLine->new(
 $cmd->run;
 
 1;
-# ABSTRACT: Command-line client for cpanlists.org
+# ABSTRACT:
 # PODNAME:
 
 =head1 SYNOPSIS
