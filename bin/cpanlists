@@ -120,7 +120,7 @@ $cmd->run;
 
 1;
 # ABSTRACT: Command-line client for cpanlists.org
-# PODNAME: cpanlists
+# PODNAME:
 
 =head1 SYNOPSIS
 
